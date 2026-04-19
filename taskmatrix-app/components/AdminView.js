@@ -97,7 +97,6 @@ export default function AdminView({ user }) {
                   <th style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Email</th>
                   <th style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Role</th>
                   <th style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Status</th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,10 +113,6 @@ export default function AdminView({ user }) {
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: u.status === 'Active' ? '#10b981' : u.status === 'Banned' ? '#ef4444' : '#6b7280' }} />
                         {u.status}
                       </span>
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      <button style={{ color: '#2d3a8c', fontWeight: 600, fontSize: '0.8rem', marginRight: '1rem' }}>Edit</button>
-                      <button style={{ color: '#ef4444', fontWeight: 600, fontSize: '0.8rem' }}>Ban</button>
                     </td>
                   </tr>
                 ))}
