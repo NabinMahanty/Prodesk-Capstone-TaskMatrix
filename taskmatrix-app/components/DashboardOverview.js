@@ -34,17 +34,17 @@ export default function DashboardOverview({ user }) {
 
       <section className="stats-grid">
         <article className="stat-card">
-          <div className="stat-icon blue">📁</div>
+          {/* <div className="stat-icon blue"></div> */}
           <div className="stat-value">{projects.length}</div>
           <div className="stat-label">Active Projects</div>
         </article>
         <article className="stat-card">
-          <div className="stat-icon orange">📋</div>
+          {/* <div className="stat-icon orange"></div> */}
           <div className="stat-value">{tasks.filter(t => t.status !== 'done').length}</div>
           <div className="stat-label">To Do / In Progress</div>
         </article>
         <article className="stat-card">
-          <div className="stat-icon green">✅</div>
+          {/* <div className="stat-icon green"></div> */}
           <div className="stat-value">{tasks.filter(t => t.status === 'done').length}</div>
           <div className="stat-label">Completed</div>
         </article>

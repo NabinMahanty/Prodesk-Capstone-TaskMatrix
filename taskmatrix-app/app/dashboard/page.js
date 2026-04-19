@@ -11,6 +11,7 @@ import DashboardOverview from '@/components/DashboardOverview';
 import ProjectsView from '@/components/ProjectsView';
 import TasksView from '@/components/TasksView';
 import BoardsView from '@/components/BoardsView';
+import AdminView from '@/components/AdminView';
 
 // ── Icon set ─────────────────────────────────────────────────────────────────
 const ic = {
@@ -62,6 +63,11 @@ const ic = {
       <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   ),
+  admin: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  ),
 };
 
 function Sidebar({ user, onLogout, activeTab, setActiveTab }) {
@@ -72,13 +78,17 @@ function Sidebar({ user, onLogout, activeTab, setActiveTab }) {
     { label: 'Tasks',     icon: ic.check },
   ];
 
+  if (user?.email === 'nabinmahanty2003@gmail.com') {
+    navItems.push({ label: 'Admin', icon: ic.admin });
+  }
+
   return (
     <nav className="sidebar" aria-label="Main navigation">
       <div className="sidebar-brand">
         <div className="sidebar-brand-icon">{ic.grid}</div>
         <div className="sidebar-brand-info">
           <div className="sidebar-brand-name">TaskMatrix</div>
-          <div className="sidebar-brand-role">Pro Account</div>
+          <div className="sidebar-brand-role">{user?.email === 'nabinmahanty2003@gmail.com' ? 'Superadmin' : 'Pro Account'}</div>
         </div>
       </div>
 
@@ -179,6 +189,7 @@ export default function DashboardPage() {
         {activeTab === 'Projects' && <ProjectsView user={user} />}
         {activeTab === 'Tasks' && <TasksView user={user} />}
         {activeTab === 'Boards' && <BoardsView user={user} />}
+        {activeTab === 'Admin' && <AdminView user={user} />}
       </div>
     </div>
   );
