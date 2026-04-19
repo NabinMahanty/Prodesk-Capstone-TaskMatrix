@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
 import useAuthStore from '@/store/authStore';
+import useTaskStore from '@/store/taskStore';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // ── Icon set ─────────────────────────────────────────────────────────────────
 const ic = {
@@ -76,51 +78,9 @@ const ic = {
       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
     </svg>
   ),
-  alert: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-      <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-    </svg>
-  ),
-  trend: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
-    </svg>
-  ),
 };
 
-const PROJECTS = [
-  { name: 'Brand Identity Redesign', icon: '✏️', percent: 84, color: 'blue',   members: ['JC', 'SM', 'AC'] },
-  { name: 'Financial Portal UI',     icon: '💳', percent: 42, color: 'green',  members: ['JC', 'LT'] },
-  { name: 'Q4 Marketing Campaign',   icon: '🚀', percent: 12, color: 'orange', members: ['AC', 'SM'] },
-];
-
-const ACTIVITY = [
-  {
-    color: 'blue', initials: 'SM',
-    text: <><strong>Sarah Miller</strong> moved &ldquo;User Onboarding&rdquo; to <span className="activity-badge completed">COMPLETED</span></>,
-    time: '12 Minutes Ago',
-  },
-  {
-    color: 'orange', initials: 'AC',
-    text: <><strong>Alex Chen</strong> commented on &ldquo;API Documentation&rdquo;</>,
-    quote: '"Should we include the new authentication endpoints in this sprint?"',
-    time: '2 Hours Ago',
-  },
-  {
-    color: 'teal', initials: 'JU',
-    text: <><strong>Julian</strong> uploaded 3 attachments to &ldquo;Brand Guidelines&rdquo;</>,
-    time: 'Yesterday',
-  },
-  {
-    color: 'red', initials: 'SY',
-    text: <><strong>System</strong> flagged &ldquo;Database Migration&rdquo; as Overdue</>,
-    time: '2 Days Ago',
-  },
-];
-
 function Sidebar({ user, onLogout }) {
-  const initial = (user?.displayName || user?.email || 'U')[0].toUpperCase();
   const navItems = [
     { label: 'Dashboard', icon: ic.grid,     active: true  },
     { label: 'Projects',  icon: ic.folder,   active: false },
@@ -136,7 +96,7 @@ function Sidebar({ user, onLogout }) {
         <div className="sidebar-brand-icon">{ic.grid}</div>
         <div className="sidebar-brand-info">
           <div className="sidebar-brand-name">TaskMatrix</div>
-          <div className="sidebar-brand-role">Digital Curator</div>
+          <div className="sidebar-brand-role">Provider</div>
         </div>
       </div>
 
@@ -146,7 +106,6 @@ function Sidebar({ user, onLogout }) {
             key={label}
             className={`nav-item${active ? ' active' : ''}`}
             aria-current={active ? 'page' : undefined}
-            id={`nav-${label.toLowerCase()}`}
           >
             {icon}
             {label}
@@ -155,12 +114,7 @@ function Sidebar({ user, onLogout }) {
       </div>
 
       <div className="sidebar-footer">
-        <button
-          id="logout-btn"
-          className="logout-btn"
-          onClick={onLogout}
-          aria-label="Log out"
-        >
+        <button className="logout-btn" onClick={onLogout} aria-label="Log out">
           {ic.logout}
           Log Out
         </button>
@@ -180,7 +134,7 @@ function Avatar({ user, size = 34 }) {
     );
   }
   return (
-    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.35, background: `hsl(${(initial.charCodeAt(0) * 47) % 360}, 60%, 40%)` }}>
+    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.35 }}>
       {initial}
     </div>
   );
@@ -188,20 +142,90 @@ function Avatar({ user, size = 34 }) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading } = useAuthStore();
+  const { user, loading: authLoading } = useAuthStore();
+  const { tasks, loading: tasksLoading, fetchTasks, addTask, updateTask, deleteTask } = useTaskStore();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+
+  // Form State
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState('todo'); // todo, in-progress, done
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
-  }, [user, loading, router]);
+    if (!authLoading && !user) router.replace('/login');
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (user) {
+      fetchTasks();
+    }
+  }, [user, fetchTasks]);
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
       router.replace('/login');
-    } catch {/* cookie cleared by AuthProvider's onAuthStateChange */}
+    } catch {/* ignored */}
   };
 
-  if (loading || !user) {
+  const openAddModal = () => {
+    setEditingTask(null);
+    setTitle('');
+    setDescription('');
+    setStatus('todo');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (task) => {
+    setEditingTask(task);
+    setTitle(task.title);
+    setDescription(task.description);
+    setStatus(task.status || 'todo');
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingTask) {
+        await updateTask(editingTask.id, { title, description, status });
+      } else {
+        await addTask({ title, description, status });
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      alert('Error saving task');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (confirm('Are you sure you want to delete this task?')) {
+      try {
+        await deleteTask(id);
+      } catch (error) {
+        alert('Error deleting task');
+      }
+    }
+  };
+
+  const chartData = useMemo(() => {
+    let todo = 0; let inProgress = 0; let done = 0;
+    tasks.forEach(t => {
+      if (t.status === 'in-progress') inProgress++;
+      else if (t.status === 'done') done++;
+      else todo++;
+    });
+
+    return [
+      { name: 'To Do', count: todo, color: '#f97316' },
+      { name: 'In Progress', count: inProgress, color: '#2d3a8c' },
+      { name: 'Completed', count: done, color: '#10b981' }
+    ];
+  }, [tasks]);
+
+  if (authLoading || !user) {
     return (
       <div className="loading-screen" aria-label="Loading dashboard">
         <div className="loading-ring" />
@@ -210,8 +234,6 @@ export default function DashboardPage() {
     );
   }
 
-  const pendingCount = 12;
-  const activeStreams = 4;
   const displayName = user.displayName || user.email.split('@')[0];
 
   return (
@@ -223,25 +245,15 @@ export default function DashboardPage() {
         <header className="topbar">
           <div className="topbar-search" role="search">
             {ic.search}
-            <input
-              id="dashboard-search"
-              type="text"
-              placeholder="Search curated insights..."
-              aria-label="Search"
-            />
+            <input type="text" placeholder="Search tasks..." aria-label="Search" />
           </div>
 
           <div className="topbar-actions">
-            <button id="notifications-btn" className="icon-btn" aria-label="Notifications">
-              {ic.bell}
-            </button>
-            <button id="help-btn" className="icon-btn" aria-label="Help">
-              {ic.help}
-            </button>
-            <div className="topbar-user" id="user-profile-pill" role="button" tabIndex={0} aria-label="User profile">
+            <button className="icon-btn" aria-label="Notifications">{ic.bell}</button>
+            <div className="topbar-user" role="button" tabIndex={0} aria-label="User profile">
               <div className="topbar-user-info">
                 <div className="topbar-user-name">{displayName}</div>
-                <div className="topbar-user-role">Project Curator</div>
+                <div className="topbar-user-role">Member</div>
               </div>
               <Avatar user={user} />
             </div>
@@ -249,113 +261,141 @@ export default function DashboardPage() {
         </header>
 
         {/* ── Content ── */}
-        <main className="dashboard-content" id="dashboard-content">
-          {/* Hero */}
-          <section className="dashboard-hero" aria-label="Welcome section">
+        <main className="dashboard-content">
+          <section className="dashboard-hero">
             <h1>Welcome back, {displayName.split(' ')[0]} 👋</h1>
-            <p>
-              You have <strong>{pendingCount} pending tasks</strong> across{' '}
-              <strong>{activeStreams} active streams</strong> today.
-            </p>
+            <p>You have <strong>{tasks.filter(t => t.status !== 'done').length} pending tasks</strong> today.</p>
           </section>
 
-          {/* Stats */}
-          <section className="stats-grid" aria-label="Key metrics">
+          <section className="stats-grid">
             <article className="stat-card">
               <div className="stat-icon blue">{ic.check}</div>
-              <div className="stat-value">24</div>
-              <div className="stat-label">Tasks Assigned</div>
-              <div className="stat-trend up">
-                <span>↑</span> +4 this week
-              </div>
+              <div className="stat-value">{tasks.length}</div>
+              <div className="stat-label">Total Tasks</div>
             </article>
             <article className="stat-card">
               <div className="stat-icon orange">{ic.task}</div>
-              <div className="stat-value">08</div>
-              <div className="stat-label">Due This Week</div>
-              <div className="stat-trend warn">
-                <span>⚠</span> 3 high priority
-              </div>
+              <div className="stat-value">{tasks.filter(t => t.status === 'todo').length}</div>
+              <div className="stat-label">To Do</div>
             </article>
             <article className="stat-card">
               <div className="stat-icon green">{ic.comment}</div>
-              <div className="stat-value">15</div>
-              <div className="stat-label">Recent Comments</div>
-              <div className="stat-trend info">Updated 12m ago</div>
+              <div className="stat-value">{tasks.filter(t => t.status === 'done').length}</div>
+              <div className="stat-label">Completed</div>
             </article>
           </section>
 
-          {/* Main grid */}
           <div className="dashboard-grid">
-            {/* Projects at a Glance */}
-            <section className="card" aria-label="Projects at a glance">
+            {/* My Tasks */}
+            <section className="card">
               <div className="card-header">
                 <div>
-                  <div className="card-title">Projects at a Glance</div>
-                  <div className="card-subtitle">Active creative streams and their health</div>
+                  <div className="card-title">My Tasks</div>
+                  <div className="card-subtitle">Manage your daily stream</div>
                 </div>
-                <a href="#" className="view-all-link" id="view-all-projects">View All Projects</a>
               </div>
-
-              {PROJECTS.map((p) => (
-                <article key={p.name} className="project-item">
-                  <div className="project-icon-wrap" aria-hidden="true">{p.icon}</div>
-                  <div className="project-info">
-                    <div className="project-name">{p.name}</div>
-                    <div className="project-meta">
-                      <div className="progress-bar-bg">
-                        <div
-                          className={`progress-bar-fill ${p.color}`}
-                          style={{ width: `${p.percent}%` }}
-                          role="progressbar"
-                          aria-valuenow={p.percent}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-label={`${p.name} progress`}
-                        />
+              
+              <div className="task-list">
+                {tasksLoading ? (
+                  <p>Loading...</p>
+                ) : tasks.length === 0 ? (
+                  <p>No tasks yet. Create one!</p>
+                ) : (
+                  tasks.map((task) => (
+                    <article key={task.id} className={`task-item ${task.status}`}>
+                      <div className="task-info">
+                        <div className="task-info-title">{task.title}</div>
+                        <div className="task-info-desc">{task.description}</div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="project-right">
-                    <div className="project-percent">{p.percent}%</div>
-                    <div className="project-avatars" aria-label={`${p.members.length} team members`}>
-                      {p.members.map((m) => (
-                        <div key={m} className="avatar-xs" title={m}>{m[0]}</div>
-                      ))}
-                    </div>
-                  </div>
-                </article>
-              ))}
+                      <div className="task-actions">
+                        <button className="task-btn edit" onClick={() => openEditModal(task)}>Edit</button>
+                        <button className="task-btn delete" onClick={() => handleDelete(task.id)}>Delete</button>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
             </section>
 
-            {/* Activity Feed */}
-            <section className="card" aria-label="Activity feed">
+            {/* Analytics */}
+            <section className="card">
               <div className="card-header">
-                <div className="card-title">Activity Feed</div>
+                <div className="card-title">Task Analytics</div>
               </div>
-              <div className="activity-feed">
-                {ACTIVITY.map((a, i) => (
-                  <article key={i} className="activity-item">
-                    <div className={`activity-dot ${a.color}`} aria-hidden="true">{a.initials}</div>
-                    <div className="activity-body">
-                      <p className="activity-text">{a.text}</p>
-                      {a.quote && <div className="quote-box">{a.quote}</div>}
-                      <time className="activity-time">{a.time}</time>
-                    </div>
-                  </article>
-                ))}
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-              <button className="load-more-btn" id="load-more-activity">Load More Activity</button>
             </section>
           </div>
         </main>
       </div>
 
-      {/* FAB */}
-      <button className="fab" id="add-task-fab" aria-label="Add new task">
+      <button className="fab" onClick={openAddModal} aria-label="Add new task">
         {ic.plus}
         Add Task
       </button>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">{editingTask ? 'Edit Task' : 'Add New Task'}</h2>
+            <form onSubmit={handleFormSubmit}>
+              <div className="form-group">
+                <label className="form-label">Task Title</label>
+                <input
+                  type="text"
+                  required
+                  className="form-input"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Update Database Schema"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Description</label>
+                <textarea
+                  className="form-input"
+                  rows="3"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Details about the task..."
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select 
+                  className="form-input"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="todo">To Do</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="done">Completed</option>
+                </select>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-primary small">{editingTask ? 'Save Changes' : 'Create Task'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
