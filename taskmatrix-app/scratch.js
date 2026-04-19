@@ -18,15 +18,7 @@ const supabaseKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 (async () => {
-  
-  // Try inserting what my dashboard does
-  const newTask = {
-    title: 'test task',
-    description: 'test desc',
-    status: 'todo',
-    user_id: 'e22e92c4-3bd3-4e4b-bbb1-eb5d8c6b4b45' // dummy uuid just to see error
-  };
-  
-  const { data, error } = await supabase.from('tasks').insert([newTask]).select();
-  console.log('Insert Check:\nData:', data, '\nError:', error);
+  console.log('Testing projects table existence...');
+  const { data, error } = await supabase.from('projects').select('*').limit(1);
+  console.log('Result:', error ? error.message : 'Table exists');
 })();

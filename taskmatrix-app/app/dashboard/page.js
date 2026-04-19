@@ -1,11 +1,16 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
 import useAuthStore from '@/store/authStore';
 import useTaskStore from '@/store/taskStore';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import useProjectStore from '@/store/projectStore';
+
+import DashboardOverview from '@/components/DashboardOverview';
+import ProjectsView from '@/components/ProjectsView';
+import TasksView from '@/components/TasksView';
+import BoardsView from '@/components/BoardsView';
 
 // ── Icon set ─────────────────────────────────────────────────────────────────
 const ic = {
@@ -52,42 +57,19 @@ const ic = {
       <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" />
     </svg>
   ),
-  help: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
-    </svg>
-  ),
   search: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   ),
-  plus: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  ),
-  task: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  ),
-  comment: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-    </svg>
-  ),
 };
 
-function Sidebar({ user, onLogout }) {
+function Sidebar({ user, onLogout, activeTab, setActiveTab }) {
   const navItems = [
-    { label: 'Dashboard', icon: ic.grid,     active: true  },
-    { label: 'Projects',  icon: ic.folder,   active: false },
-    { label: 'Boards',    icon: ic.board,    active: false },
-    { label: 'Tasks',     icon: ic.check,    active: false },
-    { label: 'Team',      icon: ic.users,    active: false },
-    { label: 'Settings',  icon: ic.settings, active: false },
+    { label: 'Dashboard', icon: ic.grid },
+    { label: 'Projects',  icon: ic.folder },
+    { label: 'Boards',    icon: ic.board },
+    { label: 'Tasks',     icon: ic.check },
   ];
 
   return (
@@ -96,16 +78,16 @@ function Sidebar({ user, onLogout }) {
         <div className="sidebar-brand-icon">{ic.grid}</div>
         <div className="sidebar-brand-info">
           <div className="sidebar-brand-name">TaskMatrix</div>
-          <div className="sidebar-brand-role">Provider</div>
+          <div className="sidebar-brand-role">Pro Account</div>
         </div>
       </div>
 
       <div className="sidebar-nav">
-        {navItems.map(({ label, icon, active }) => (
+        {navItems.map(({ label, icon }) => (
           <button
             key={label}
-            className={`nav-item${active ? ' active' : ''}`}
-            aria-current={active ? 'page' : undefined}
+            className={`nav-item ${activeTab === label ? ' active' : ''}`}
+            onClick={() => setActiveTab(label)}
           >
             {icon}
             {label}
@@ -123,19 +105,11 @@ function Sidebar({ user, onLogout }) {
   );
 }
 
-function Avatar({ user, size = 34 }) {
+function Avatar({ user }) {
   const initial = (user?.displayName || user?.email || 'U')[0].toUpperCase();
-  if (user?.photoURL) {
-    return (
-      <div className="avatar" style={{ width: size, height: size }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={user.photoURL} alt={user.displayName || 'User'} referrerPolicy="no-referrer" />
-      </div>
-    );
-  }
   return (
-    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.35 }}>
-      {initial}
+    <div className="avatar">
+      {user?.photoURL ? <img src={user.photoURL} alt="Avatar" referrerPolicy="no-referrer" /> : initial}
     </div>
   );
 }
@@ -143,15 +117,10 @@ function Avatar({ user, size = 34 }) {
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuthStore();
-  const { tasks, loading: tasksLoading, fetchTasks, addTask, updateTask, deleteTask } = useTaskStore();
+  const { fetchTasks } = useTaskStore();
+  const { fetchProjects } = useProjectStore();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
-
-  // Form State
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('todo'); // todo, in-progress, done
+  const [activeTab, setActiveTab] = useState('Dashboard');
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
@@ -160,8 +129,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user) {
       fetchTasks();
+      fetchProjects();
     }
-  }, [user, fetchTasks]);
+  }, [user, fetchTasks, fetchProjects]);
 
   const handleLogout = async () => {
     try {
@@ -170,66 +140,11 @@ export default function DashboardPage() {
     } catch {/* ignored */}
   };
 
-  const openAddModal = () => {
-    setEditingTask(null);
-    setTitle('');
-    setDescription('');
-    setStatus('todo');
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (task) => {
-    setEditingTask(task);
-    setTitle(task.title);
-    setDescription(task.description);
-    setStatus(task.status || 'todo');
-    setIsModalOpen(true);
-  };
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingTask) {
-        await updateTask(editingTask.id, { title, description, status });
-      } else {
-        await addTask({ title, description, status });
-      }
-      setIsModalOpen(false);
-    } catch (error) {
-      alert('Error saving task');
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this task?')) {
-      try {
-        await deleteTask(id);
-      } catch (error) {
-        alert('Error deleting task');
-      }
-    }
-  };
-
-  const chartData = useMemo(() => {
-    let todo = 0; let inProgress = 0; let done = 0;
-    tasks.forEach(t => {
-      if (t.status === 'in-progress') inProgress++;
-      else if (t.status === 'done') done++;
-      else todo++;
-    });
-
-    return [
-      { name: 'To Do', count: todo, color: '#f97316' },
-      { name: 'In Progress', count: inProgress, color: '#2d3a8c' },
-      { name: 'Completed', count: done, color: '#10b981' }
-    ];
-  }, [tasks]);
-
   if (authLoading || !user) {
     return (
-      <div className="loading-screen" aria-label="Loading dashboard">
+      <div className="loading-screen">
         <div className="loading-ring" />
-        <p className="loading-text">Loading dashboard…</p>
+        <p className="loading-text">Loading...</p>
       </div>
     );
   }
@@ -238,19 +153,18 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-layout">
-      <Sidebar user={user} onLogout={handleLogout} />
+      <Sidebar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <div className="dashboard-main">
-        {/* ── Top bar ── */}
+        {/* Topbar */}
         <header className="topbar">
-          <div className="topbar-search" role="search">
+          <div className="topbar-search">
             {ic.search}
-            <input type="text" placeholder="Search tasks..." aria-label="Search" />
+            <input type="text" placeholder={`Search ${activeTab.toLowerCase()}...`} />
           </div>
-
           <div className="topbar-actions">
-            <button className="icon-btn" aria-label="Notifications">{ic.bell}</button>
-            <div className="topbar-user" role="button" tabIndex={0} aria-label="User profile">
+            <button className="icon-btn">{ic.bell}</button>
+            <div className="topbar-user" tabIndex={0}>
               <div className="topbar-user-info">
                 <div className="topbar-user-name">{displayName}</div>
                 <div className="topbar-user-role">Member</div>
@@ -260,142 +174,12 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* ── Content ── */}
-        <main className="dashboard-content">
-          <section className="dashboard-hero">
-            <h1>Welcome back, {displayName.split(' ')[0]} 👋</h1>
-            <p>You have <strong>{tasks.filter(t => t.status !== 'done').length} pending tasks</strong> today.</p>
-          </section>
-
-          <section className="stats-grid">
-            <article className="stat-card">
-              <div className="stat-icon blue">{ic.check}</div>
-              <div className="stat-value">{tasks.length}</div>
-              <div className="stat-label">Total Tasks</div>
-            </article>
-            <article className="stat-card">
-              <div className="stat-icon orange">{ic.task}</div>
-              <div className="stat-value">{tasks.filter(t => t.status === 'todo').length}</div>
-              <div className="stat-label">To Do</div>
-            </article>
-            <article className="stat-card">
-              <div className="stat-icon green">{ic.comment}</div>
-              <div className="stat-value">{tasks.filter(t => t.status === 'done').length}</div>
-              <div className="stat-label">Completed</div>
-            </article>
-          </section>
-
-          <div className="dashboard-grid">
-            {/* My Tasks */}
-            <section className="card">
-              <div className="card-header">
-                <div>
-                  <div className="card-title">My Tasks</div>
-                  <div className="card-subtitle">Manage your daily stream</div>
-                </div>
-              </div>
-              
-              <div className="task-list">
-                {tasksLoading ? (
-                  <p>Loading...</p>
-                ) : tasks.length === 0 ? (
-                  <p>No tasks yet. Create one!</p>
-                ) : (
-                  tasks.map((task) => (
-                    <article key={task.id} className={`task-item ${task.status}`}>
-                      <div className="task-info">
-                        <div className="task-info-title">{task.title}</div>
-                        <div className="task-info-desc">{task.description}</div>
-                      </div>
-                      <div className="task-actions">
-                        <button className="task-btn edit" onClick={() => openEditModal(task)}>Edit</button>
-                        <button className="task-btn delete" onClick={() => handleDelete(task.id)}>Delete</button>
-                      </div>
-                    </article>
-                  ))
-                )}
-              </div>
-            </section>
-
-            {/* Analytics */}
-            <section className="card">
-              <div className="card-header">
-                <div className="card-title">Task Analytics</div>
-              </div>
-              <div className="chart-container">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          </div>
-        </main>
+        {/* Dynamic View based on Active Tab */}
+        {activeTab === 'Dashboard' && <DashboardOverview user={user} />}
+        {activeTab === 'Projects' && <ProjectsView user={user} />}
+        {activeTab === 'Tasks' && <TasksView user={user} />}
+        {activeTab === 'Boards' && <BoardsView user={user} />}
       </div>
-
-      <button className="fab" onClick={openAddModal} aria-label="Add new task">
-        {ic.plus}
-        Add Task
-      </button>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title">{editingTask ? 'Edit Task' : 'Add New Task'}</h2>
-            <form onSubmit={handleFormSubmit}>
-              <div className="form-group">
-                <label className="form-label">Task Title</label>
-                <input
-                  type="text"
-                  required
-                  className="form-input"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Update Database Schema"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea
-                  className="form-input"
-                  rows="3"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Details about the task..."
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Status</label>
-                <select 
-                  className="form-input"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                >
-                  <option value="todo">To Do</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="done">Completed</option>
-                </select>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-primary small">{editingTask ? 'Save Changes' : 'Create Task'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
