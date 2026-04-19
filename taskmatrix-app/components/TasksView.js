@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import useTaskStore from '@/store/taskStore';
 import useProjectStore from '@/store/projectStore';
+import useUserStore from '@/store/userStore';
 
 export default function TasksView({ user }) {
   const { tasks, loading, addTask, updateTask, deleteTask } = useTaskStore();
   const { projects } = useProjectStore();
+  const { users } = useUserStore();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -23,6 +25,7 @@ export default function TasksView({ user }) {
   const [status, setStatus] = useState('todo');
   const [dueDate, setDueDate] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
 
   const openAddModal = () => {
     setEditingTask(null);
@@ -32,6 +35,7 @@ export default function TasksView({ user }) {
     setStatus('todo');
     setDueDate('');
     setProjectId('');
+    setAssigneeId('');
     setIsModalOpen(true);
   };
 
@@ -43,6 +47,7 @@ export default function TasksView({ user }) {
     setStatus(task.status || 'todo');
     setDueDate(task.due_date ? task.due_date.split('T')[0] : '');
     setProjectId(task.project_id || '');
+    setAssigneeId(task.assignee_id || '');
     setIsModalOpen(true);
   };
 
@@ -54,7 +59,8 @@ export default function TasksView({ user }) {
       status, 
       priority, 
       due_date: dueDate || null,
-      project_id: projectId || null 
+      project_id: projectId || null,
+      assignee_id: assigneeId || null
     };
     try {
       if (editingTask) {
@@ -118,7 +124,7 @@ export default function TasksView({ user }) {
               <div className="task-info">
                 <div className="task-info-title">{task.title} <span style={{ fontSize: '0.7em', padding: '2px 6px', background: '#e5e7eb', borderRadius: '4px', marginLeft: '6px'}}>{task.priority}</span></div>
                 <div className="task-info-desc">
-                  Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'None'} | Project ID: {task.project_id ? projects.find(p => p.id === task.project_id)?.title : 'Unassigned'}
+                  Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'None'} | Project: {task.project_id ? projects.find(p => p.id === task.project_id)?.title : 'None'} | Assignee: {task.assignee_id ? users.find(u => u.id === task.assignee_id)?.email : 'Unassigned'}
                 </div>
               </div>
               <div className="task-actions">
@@ -174,6 +180,13 @@ export default function TasksView({ user }) {
                   <select className="form-input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
                     <option value="">None</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Assign To User</label>
+                  <select className="form-input" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
                   </select>
                 </div>
               </div>

@@ -6,12 +6,14 @@ import supabase from '@/lib/supabase';
 import useAuthStore from '@/store/authStore';
 import useTaskStore from '@/store/taskStore';
 import useProjectStore from '@/store/projectStore';
+import useUserStore from '@/store/userStore';
 
 import DashboardOverview from '@/components/DashboardOverview';
 import ProjectsView from '@/components/ProjectsView';
 import TasksView from '@/components/TasksView';
 import BoardsView from '@/components/BoardsView';
 import AdminView from '@/components/AdminView';
+import SettingsView from '@/components/SettingsView';
 
 // ── Icon set ─────────────────────────────────────────────────────────────────
 const ic = {
@@ -76,6 +78,7 @@ function Sidebar({ user, onLogout, activeTab, setActiveTab }) {
     { label: 'Projects',  icon: ic.folder },
     { label: 'Boards',    icon: ic.board },
     { label: 'Tasks',     icon: ic.check },
+    { label: 'Settings',  icon: ic.settings },
   ];
 
   if (user?.email === 'nabinmahanty2003@gmail.com') {
@@ -129,6 +132,7 @@ export default function DashboardPage() {
   const { user, loading: authLoading } = useAuthStore();
   const { fetchTasks } = useTaskStore();
   const { fetchProjects } = useProjectStore();
+  const { fetchUsers } = useUserStore();
 
   const [activeTab, setActiveTab] = useState('Dashboard');
 
@@ -140,8 +144,9 @@ export default function DashboardPage() {
     if (user) {
       fetchTasks();
       fetchProjects();
+      fetchUsers();
     }
-  }, [user, fetchTasks, fetchProjects]);
+  }, [user, fetchTasks, fetchProjects, fetchUsers]);
 
   const handleLogout = async () => {
     try {
@@ -190,6 +195,7 @@ export default function DashboardPage() {
         {activeTab === 'Tasks' && <TasksView user={user} />}
         {activeTab === 'Boards' && <BoardsView user={user} />}
         {activeTab === 'Admin' && <AdminView user={user} />}
+        {activeTab === 'Settings' && <SettingsView />}
       </div>
     </div>
   );

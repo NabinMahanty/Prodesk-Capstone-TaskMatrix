@@ -3,26 +3,29 @@
 import { useState } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
+import useTaskStore from '@/store/taskStore';
+import useProjectStore from '@/store/projectStore';
+import useUserStore from '@/store/userStore';
+
 export default function AdminView({ user }) {
   const [activeSubTab, setActiveSubTab] = useState('Overview');
+  const { tasks } = useTaskStore();
+  const { projects } = useProjectStore();
+  const { users, loading: usersLoading } = useUserStore();
 
-  // Hardcoded Mock Data for Admin Showcase
-  const systemUsers = [
-    { id: 1, name: 'Nabin Mahanty', email: 'nabinmahanty2003@gmail.com', role: 'Superadmin', status: 'Active', joined: '2026-04-19' },
-    { id: 2, name: 'Sarah Miller', email: 'sarah.m@example.com', role: 'Premium', status: 'Active', joined: '2026-03-12' },
-    { id: 3, name: 'Alex Chen', email: 'achen@example.com', role: 'Member', status: 'Offline', joined: '2026-03-25' },
-    { id: 4, name: 'Julian User', email: 'juser@prodesk.in', role: 'Member', status: 'Active', joined: '2026-04-01' },
-    { id: 5, name: 'Test Account', email: 'test@example.com', role: 'Member', status: 'Banned', joined: '2026-04-15' },
-  ];
+  const systemUsers = users.map(u => ({
+    id: u.id,
+    name: u.full_name || u.email.split('@')[0],
+    email: u.email,
+    role: u.email === 'nabinmahanty2003@gmail.com' ? 'Superadmin' : 'Member',
+    status: 'Active',
+  }));
 
-  const activityData = [
-    { name: 'Mon', logins: 45, signups: 12 },
-    { name: 'Tue', logins: 52, signups: 18 },
-    { name: 'Wed', logins: 38, signups: 9 },
-    { name: 'Thu', logins: 65, signups: 22 },
-    { name: 'Fri', logins: 48, signups: 14 },
-    { name: 'Sat', logins: 25, signups: 5 },
-    { name: 'Sun', logins: 30, signups: 8 },
+  const priorityData = [
+    { name: 'Critical', tasks: tasks.filter(t => t.priority === 'Critical').length },
+    { name: 'High', tasks: tasks.filter(t => t.priority === 'High').length },
+    { name: 'Medium', tasks: tasks.filter(t => t.priority === 'Medium').length },
+    { name: 'Low', tasks: tasks.filter(t => t.priority === 'Low').length },
   ];
 
   return (
@@ -42,39 +45,38 @@ export default function AdminView({ user }) {
         <>
           <section className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '2rem' }}>
             <article className="stat-card" style={{ borderTop: '4px solid #2d3a8c' }}>
-              <div className="stat-label">Total Users</div>
-              <div className="stat-value">1,248</div>
-              <div className="stat-trend up">↑ +12% this month</div>
+              <div className="stat-label">Total Projects</div>
+              <div className="stat-value">{projects.length}</div>
+              <div className="stat-trend info">System Wide</div>
             </article>
             <article className="stat-card" style={{ borderTop: '4px solid #10b981' }}>
-              <div className="stat-label">Active Subscriptions</div>
-              <div className="stat-value">452</div>
-              <div className="stat-trend up">↑ +5% this month</div>
+              <div className="stat-label">Total Tasks</div>
+              <div className="stat-value">{tasks.length}</div>
+              <div className="stat-trend info">System Wide</div>
             </article>
             <article className="stat-card" style={{ borderTop: '4px solid #f59e0b' }}>
-              <div className="stat-label">System Load</div>
-              <div className="stat-value">24%</div>
-              <div className="stat-trend info">Normal</div>
+              <div className="stat-label">Completion Rate</div>
+              <div className="stat-value">{tasks.length > 0 ? Math.round((tasks.filter(t => t.status === 'done').length / tasks.length) * 100) : 0}%</div>
+              <div className="stat-trend up">For active projects</div>
             </article>
             <article className="stat-card" style={{ borderTop: '4px solid #ef4444' }}>
-              <div className="stat-label">Failed Logins</div>
-              <div className="stat-value">12</div>
+              <div className="stat-label">Critical Tasks</div>
+              <div className="stat-value">{tasks.filter(t => t.priority === 'Critical').length}</div>
               <div className="stat-trend warn">Needs review</div>
             </article>
           </section>
 
           <section className="card" style={{ marginBottom: '2rem' }}>
-            <div className="card-header"><div className="card-title">System Traffic & Signups</div></div>
-            <div className="chart-container" style={{ height: 300 }}>
+            <div className="card-header"><div className="card-title">Task Distribution by Priority</div></div>
+            <div className="chart-container" style={{ height: 300, minWidth: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={activityData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <BarChart data={priorityData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                   <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                  <Line type="monotone" dataKey="logins" stroke="#2d3a8c" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Logins" />
-                  <Line type="monotone" dataKey="signups" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Signups" />
-                </LineChart>
+                  <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                  <Bar dataKey="tasks" fill="#2d3a8c" radius={[4,4,0,0]} barSize={40} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </section>

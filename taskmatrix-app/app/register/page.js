@@ -181,10 +181,10 @@ export default function RegisterPage() {
       }
 
       showToast(
-        "✅ Account created! Check your email to confirm, then log in.",
+        "✅ Account created successfully! Redirecting you to login...",
         "success",
       );
-      setTimeout(() => router.replace("/login"), 3000);
+      setTimeout(() => router.replace("/login"), 2000);
     } catch (err) {
       const msg =
         err.message?.includes("already registered") ||
