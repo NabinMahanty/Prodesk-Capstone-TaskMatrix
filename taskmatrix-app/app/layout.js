@@ -1,5 +1,6 @@
 import './globals.css';
 import AuthProvider from '@/components/AuthProvider';
+import { Toaster } from 'react-hot-toast';
 
 export const metadata = {
   title: 'TaskMatrix – Smart Project Management Tool',
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
       <head />
       <body>
         <AuthProvider>{children}</AuthProvider>
+        <Toaster position="bottom-right" />
       </body>
     </html>
   );

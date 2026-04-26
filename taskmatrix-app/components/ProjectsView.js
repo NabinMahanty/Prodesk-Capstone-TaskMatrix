@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import useProjectStore from '@/store/projectStore';
+import { toast } from 'react-hot-toast';
 
 export default function ProjectsView({ user }) {
   const { projects, loading, addProject, updateProject, deleteProject } = useProjectStore();
@@ -34,18 +35,21 @@ export default function ProjectsView({ user }) {
     try {
       if (editingProject) {
         await updateProject(editingProject.id, { title, description, color });
+        toast.success('Project successfully updated');
       } else {
         await addProject({ title, description, color });
+        toast.success('Project successfully created');
       }
       setIsModalOpen(false);
     } catch (err) {
-      alert('Error saving project');
+      toast.error('Error saving project');
     }
   };
 
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this project?')) {
       await deleteProject(id);
+      toast.success('Project successfully deleted');
     }
   };
 
@@ -57,7 +61,13 @@ export default function ProjectsView({ user }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-        {loading ? <p>Loading projects...</p> : projects.length === 0 ? <p>No projects found.</p> : projects.map(proj => (
+        {loading ? (
+          <>
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
+          </>
+        ) : projects.length === 0 ? <p>No projects found.</p> : projects.map(proj => (
           <div key={proj.id} className="card" style={{ borderTop: `4px solid ${proj.color || '#ccc'}` }}>
             <h3 style={{ marginBottom: '0.5rem', fontSize: '1.2rem' }}>{proj.title}</h3>
             <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1.5rem', minHeight: '40px' }}>{proj.description}</p>

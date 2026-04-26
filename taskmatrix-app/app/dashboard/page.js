@@ -70,9 +70,16 @@ const ic = {
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
   ),
+  menu: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  )
 };
 
-function Sidebar({ user, onLogout, activeTab, setActiveTab }) {
+function Sidebar({ user, onLogout, activeTab, setActiveTab, isOpen, setIsOpen }) {
   const navItems = [
     { label: 'Dashboard', icon: ic.grid },
     { label: 'Projects',  icon: ic.folder },
@@ -86,7 +93,15 @@ function Sidebar({ user, onLogout, activeTab, setActiveTab }) {
   }
 
   return (
-    <nav className="sidebar" aria-label="Main navigation">
+    <>
+      {isOpen && (
+        <div 
+          className="modal-overlay" 
+          style={{ zIndex: 40 }} 
+          onClick={() => setIsOpen(false)} 
+        />
+      )}
+      <nav className={`sidebar ${isOpen ? 'open' : ''}`} aria-label="Main navigation">
       <div className="sidebar-brand">
         <div className="sidebar-brand-icon">{ic.grid}</div>
         <div className="sidebar-brand-info">
@@ -115,6 +130,7 @@ function Sidebar({ user, onLogout, activeTab, setActiveTab }) {
         </button>
       </div>
     </nav>
+    </>
   );
 }
 
@@ -135,6 +151,7 @@ export default function DashboardPage() {
   const { fetchUsers } = useUserStore();
 
   const [activeTab, setActiveTab] = useState('Dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
@@ -168,14 +185,19 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-layout">
-      <Sidebar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={(tab) => { setActiveTab(tab); setIsSidebarOpen(false); }} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
       <div className="dashboard-main">
         {/* Topbar */}
         <header className="topbar">
-          <div className="topbar-search">
-            {ic.search}
-            <input type="text" placeholder={`Search ${activeTab.toLowerCase()}...`} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button className="hamburger-btn" onClick={() => setIsSidebarOpen(true)}>
+              {ic.menu}
+            </button>
+            <div className="topbar-search">
+              {ic.search}
+              <input type="text" placeholder={`Search ${activeTab.toLowerCase()}...`} />
+            </div>
           </div>
           <div className="topbar-actions">
             <button className="icon-btn">{ic.bell}</button>

@@ -4,6 +4,11 @@ import { useState } from 'react';
 import useTaskStore from '@/store/taskStore';
 import useProjectStore from '@/store/projectStore';
 import useUserStore from '@/store/userStore';
+import { toast } from 'react-hot-toast';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+// Initialize Gemini API
+const genAI = new GoogleGenerativeAI('AIzaSyBlHqVfTqWcsYbiSZ4qmJGa-7zTsE4qymk');
 
 export default function TasksView({ user }) {
   const { tasks, loading, addTask, updateTask, deleteTask } = useTaskStore();
@@ -26,6 +31,30 @@ export default function TasksView({ user }) {
   const [dueDate, setDueDate] = useState('');
   const [projectId, setProjectId] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateAI = async () => {
+    if (!title) {
+      toast.error('Please enter a task title first');
+      return;
+    }
+    setIsGenerating(true);
+    const toastId = toast.loading('Generating sub-steps...');
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const prompt = `Based on the task title "${title}", generate a concise bulleted list of 3-5 sub-steps to complete it. Only provide the steps.`;
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      setDescription(prev => prev ? prev + '\n\nAI Suggestions:\n' + text : 'AI Suggestions:\n' + text);
+      toast.success('Sub-steps generated!', { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to generate sub-steps', { id: toastId });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const openAddModal = () => {
     setEditingTask(null);
@@ -65,18 +94,21 @@ export default function TasksView({ user }) {
     try {
       if (editingTask) {
         await updateTask(editingTask.id, payload);
+        toast.success('Task successfully updated');
       } else {
         await addTask(payload);
+        toast.success('Task successfully created');
       }
       setIsModalOpen(false);
     } catch (err) {
-      alert('Error saving task');
+      toast.error('Error saving task');
     }
   };
 
   const handleDelete = async (id) => {
     if (confirm('Delete this task forever?')) {
       await deleteTask(id);
+      toast.success('Task successfully deleted');
     }
   };
 
@@ -119,7 +151,13 @@ export default function TasksView({ user }) {
 
       <div className="card">
         <div className="task-list">
-          {loading ? <p>Loading tasks...</p> : displayedTasks.length === 0 ? <p>No tasks match your filters.</p> : displayedTasks.map(task => (
+          {loading ? (
+            <>
+              <div className="skeleton skeleton-card" style={{ height: '80px', marginBottom: '0.75rem' }} />
+              <div className="skeleton skeleton-card" style={{ height: '80px', marginBottom: '0.75rem' }} />
+              <div className="skeleton skeleton-card" style={{ height: '80px', marginBottom: '0' }} />
+            </>
+          ) : displayedTasks.length === 0 ? <p>No tasks match your filters.</p> : displayedTasks.map(task => (
             <div key={task.id} className={`task-item ${task.status}`}>
               <div className="task-info">
                 <div className="task-info-title">{task.title} <span style={{ fontSize: '0.7em', padding: '2px 6px', background: '#e5e7eb', borderRadius: '4px', marginLeft: '6px'}}>{task.priority}</span></div>
@@ -142,7 +180,12 @@ export default function TasksView({ user }) {
             <h2 className="modal-title">{editingTask ? 'Edit Task' : 'New Task'}</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label className="form-label">Task Title</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="form-label">Task Title</label>
+                  <button type="button" onClick={generateAI} disabled={isGenerating} style={{ background: 'var(--brand-blue)', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                    {isGenerating ? 'Generating...' : '✨ Auto-generate Sub-steps'}
+                  </button>
+                </div>
                 <input required type="text" className="form-input" value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
               <div className="form-group">

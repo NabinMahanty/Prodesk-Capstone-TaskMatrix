@@ -40,7 +40,7 @@ export default function BoardsView() {
         <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Drag and drop tasks to move them between statuses.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', flex: 1, overflow: 'auto' }}>
         {columns.map(col => (
           <div 
             key={col.id} 

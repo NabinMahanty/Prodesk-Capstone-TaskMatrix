@@ -719,22 +719,50 @@ input, textarea, select { font-family: inherit; }
 }
 .loading-text { font-size: 0.875rem; color: var(--text-secondary); }
 
+/* ─── Skeleton Loaders ───────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.skeleton-text { height: 1.2rem; width: 100%; margin-bottom: 0.5rem; }
+.skeleton-title { height: 1.5rem; width: 60%; margin-bottom: 1rem; }
+.skeleton-card { height: 120px; width: 100%; border-radius: var(--radius-md); margin-bottom: 1rem; }
+
+/* ─── Mobile Hamburger ───────────────────────────────────────────────────── */
+.hamburger-btn {
+  display: none;
+  background: none; border: none; color: var(--text-primary);
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  align-items: center; justify-content: center;
+  transition: var(--transition);
+}
+.hamburger-btn:hover { background: var(--border); }
+.hamburger-btn svg { width: 24px; height: 24px; }
+
+
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .auth-layout { grid-template-columns: 1fr; }
   .auth-brand-panel { display: none; }
   .auth-form-panel { padding: 2rem 1.5rem; }
   
-  .sidebar { width: 200px; }
-  .dashboard-main { margin-left: 200px; }
+  .sidebar { width: 200px; transform: translateX(-100%); z-index: 50; transition: transform 0.3s ease; }
+  .sidebar.open { transform: translateX(0); }
+  .dashboard-main { margin-left: 0; }
   .dashboard-grid { grid-template-columns: 1fr; }
+  .hamburger-btn { display: flex; }
 }
 
 @media (max-width: 640px) {
-  .sidebar { position: fixed; transform: translateX(-100%); }
-  .dashboard-main { margin-left: 0; }
   .dashboard-content { padding: 1.25rem; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .task-item { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .task-actions { width: 100%; justify-content: flex-end; }
+  .topbar { padding: 1rem; }
+  .topbar-search { display: none; } /* Hide search on small mobile to save space */
 }
 
 /* ─── Modal ──────────────────────────────────────────────────────────────── */
