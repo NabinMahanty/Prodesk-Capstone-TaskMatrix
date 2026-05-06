@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import supabase from "@/lib/supabase";
@@ -9,7 +9,9 @@ import useTaskStore from "@/store/taskStore";
 import useProjectStore from "@/store/projectStore";
 import useUserStore from "@/store/userStore";
 
-const DashboardOverview = dynamic(() => import("@/components/DashboardOverview"));
+const DashboardOverview = dynamic(
+  () => import("@/components/DashboardOverview"),
+);
 const ProjectsView = dynamic(() => import("@/components/ProjectsView"));
 const TasksView = dynamic(() => import("@/components/TasksView"));
 const BoardsView = dynamic(() => import("@/components/BoardsView"));
@@ -265,6 +267,7 @@ export default function DashboardPage() {
 
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const usersFetchTriggeredRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -274,9 +277,17 @@ export default function DashboardPage() {
     if (user) {
       fetchTasks();
       fetchProjects();
-      fetchUsers();
     }
-  }, [user, fetchTasks, fetchProjects, fetchUsers]);
+  }, [user, fetchTasks, fetchProjects]);
+
+  useEffect(() => {
+    if (!user || usersFetchTriggeredRef.current) return;
+
+    if (activeTab === "Tasks" || activeTab === "Admin") {
+      fetchUsers();
+      usersFetchTriggeredRef.current = true;
+    }
+  }, [activeTab, user, fetchUsers]);
 
   const handleLogout = async () => {
     try {
