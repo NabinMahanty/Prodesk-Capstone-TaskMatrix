@@ -136,9 +136,13 @@ function Sidebar({ user, onLogout, activeTab, setActiveTab, isOpen, setIsOpen })
 
 function Avatar({ user }) {
   const initial = (user?.displayName || user?.email || 'U')[0].toUpperCase();
+  const label = user?.displayName || user?.email || 'User';
+  const avatarStyle = user?.photoURL
+    ? { backgroundImage: `url(${user.photoURL})` }
+    : undefined;
   return (
-    <div className="avatar">
-      {user?.photoURL ? <img src={user.photoURL} alt="Avatar" referrerPolicy="no-referrer" /> : initial}
+    <div className="avatar" role="img" aria-label={`${label} avatar`} style={avatarStyle}>
+      {user?.photoURL ? <span className="sr-only">{label} avatar</span> : initial}
     </div>
   );
 }

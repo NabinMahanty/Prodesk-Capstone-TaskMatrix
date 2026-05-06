@@ -495,11 +495,12 @@ input, textarea, select { font-family: inherit; }
 .avatar {
   width: 34px; height: 34px; border-radius: 50%;
   background: var(--brand-blue);
+  background-position: center;
+  background-size: cover;
   display: flex; align-items: center; justify-content: center;
   font-size: 0.8rem; font-weight: 700; color: #fff;
   flex-shrink: 0;
 }
-.avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
 /* Dashboard content */
 .dashboard-content { padding: 2rem; flex: 1; }
