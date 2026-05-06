@@ -5,10 +5,6 @@ import useTaskStore from '@/store/taskStore';
 import useProjectStore from '@/store/projectStore';
 import useUserStore from '@/store/userStore';
 import { toast } from 'react-hot-toast';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Initialize Gemini API (Uses .env variable to prevent source code leaks)
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'fallback-key');
 
 export default function TasksView({ user }) {
   const { tasks, loading, addTask, updateTask, deleteTask } = useTaskStore();
@@ -41,11 +37,18 @@ export default function TasksView({ user }) {
     setIsGenerating(true);
     const toastId = toast.loading('Generating sub-steps...');
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-      const prompt = `Based on the task title "${title}", generate a concise bulleted list of 3-5 sub-steps to complete it. Only provide the steps.`;
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const response = await fetch('/api/ai/generate-steps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+
+      if (!response.ok) {
+        throw new Error('AI generation failed');
+      }
+
+      const data = await response.json();
+      const text = data.steps;
       setDescription(prev => prev ? prev + '\n\nAI Suggestions:\n' + text : 'AI Suggestions:\n' + text);
       toast.success('Sub-steps generated!', { id: toastId });
     } catch (error) {
