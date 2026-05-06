@@ -267,6 +267,7 @@ export default function DashboardPage() {
 
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const loadedUserIdRef = useRef(null);
   const usersFetchTriggeredRef = useRef(false);
 
   useEffect(() => {
@@ -274,20 +275,29 @@ export default function DashboardPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (user) {
-      fetchTasks();
-      fetchProjects();
+    if (!user?.uid) {
+      loadedUserIdRef.current = null;
+      usersFetchTriggeredRef.current = false;
+      return;
     }
-  }, [user, fetchTasks, fetchProjects]);
+
+    if (loadedUserIdRef.current === user.uid) {
+      return;
+    }
+
+    loadedUserIdRef.current = user.uid;
+    fetchTasks();
+    fetchProjects();
+  }, [user?.uid, fetchTasks, fetchProjects]);
 
   useEffect(() => {
-    if (!user || usersFetchTriggeredRef.current) return;
+    if (!user?.uid || usersFetchTriggeredRef.current) return;
 
     if (activeTab === "Tasks" || activeTab === "Admin") {
       fetchUsers();
       usersFetchTriggeredRef.current = true;
     }
-  }, [activeTab, user, fetchUsers]);
+  }, [activeTab, user?.uid, fetchUsers]);
 
   const handleLogout = async () => {
     try {

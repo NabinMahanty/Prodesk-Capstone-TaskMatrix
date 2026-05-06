@@ -12,7 +12,7 @@ const TaskStatusChart = dynamic(() => import('@/components/TaskStatusChart'), {
 
 export default function DashboardOverview({ user }) {
   const { tasks, loading: tasksLoading } = useTaskStore();
-  const { projects, loading: projectsLoading } = useProjectStore();
+  const { projects } = useProjectStore();
 
   const chartData = useMemo(() => {
     let todo = 0; let inProgress = 0; let done = 0;
@@ -29,14 +29,8 @@ export default function DashboardOverview({ user }) {
   }, [tasks]);
 
   const recentTasks = tasks.slice(0, 5); // 5 most recent tasks
-  const pendingTaskCount = useMemo(
-    () => tasks.filter(t => t.status !== 'done').length,
-    [tasks]
-  );
-  const completedTaskCount = useMemo(
-    () => tasks.filter(t => t.status === 'done').length,
-    [tasks]
-  );
+  const pendingTaskCount = useMemo(() => tasks.filter(t => t.status !== 'done').length, [tasks]);
+  const completedTaskCount = useMemo(() => tasks.filter(t => t.status === 'done').length, [tasks]);
 
   return (
     <div className="dashboard-content">
