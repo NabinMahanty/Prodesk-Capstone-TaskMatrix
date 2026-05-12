@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import supabase from "@/lib/supabase";
@@ -267,37 +267,18 @@ export default function DashboardPage() {
 
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const loadedUserIdRef = useRef(null);
-  const usersFetchTriggeredRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (!user?.uid) {
-      loadedUserIdRef.current = null;
-      usersFetchTriggeredRef.current = false;
-      return;
-    }
-
-    if (loadedUserIdRef.current === user.uid) {
-      return;
-    }
-
-    loadedUserIdRef.current = user.uid;
-    fetchTasks();
-    fetchProjects();
-  }, [user?.uid, fetchTasks, fetchProjects]);
-
-  useEffect(() => {
-    if (!user?.uid || usersFetchTriggeredRef.current) return;
-
-    if (activeTab === "Tasks" || activeTab === "Admin") {
+    if (user) {
+      fetchTasks();
+      fetchProjects();
       fetchUsers();
-      usersFetchTriggeredRef.current = true;
     }
-  }, [activeTab, user?.uid, fetchUsers]);
+  }, [user, fetchTasks, fetchProjects, fetchUsers]);
 
   const handleLogout = async () => {
     try {

@@ -1,18 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
-import dynamic from 'next/dynamic';
+import { useState, useMemo } from 'react';
 import useTaskStore from '@/store/taskStore';
 import useProjectStore from '@/store/projectStore';
-
-const TaskStatusChart = dynamic(() => import('@/components/TaskStatusChart'), {
-  ssr: false,
-  loading: () => <div className="skeleton" style={{ height: 250, width: '100%' }} />,
-});
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 
 export default function DashboardOverview({ user }) {
-  const { tasks, loading: tasksLoading } = useTaskStore();
-  const { projects } = useProjectStore();
+  const { tasks, loading: tasksLoading, deleteTask } = useTaskStore();
+  const { projects, loading: projectsLoading } = useProjectStore();
 
   const chartData = useMemo(() => {
     let todo = 0; let inProgress = 0; let done = 0;
@@ -29,14 +24,12 @@ export default function DashboardOverview({ user }) {
   }, [tasks]);
 
   const recentTasks = tasks.slice(0, 5); // 5 most recent tasks
-  const pendingTaskCount = useMemo(() => tasks.filter(t => t.status !== 'done').length, [tasks]);
-  const completedTaskCount = useMemo(() => tasks.filter(t => t.status === 'done').length, [tasks]);
 
   return (
     <div className="dashboard-content">
       <section className="dashboard-hero">
         <h1>Welcome Back, {user.displayName?.split(' ')[0]} 👋</h1>
-        <p>You have <strong>{pendingTaskCount} pending tasks</strong> today across <strong>{projects.length}</strong> projects.</p>
+        <p>You have <strong>{tasks.filter(t => t.status !== 'done').length} pending tasks</strong> today across <strong>{projects.length}</strong> projects.</p>
       </section>
 
       <section className="stats-grid">
@@ -47,12 +40,12 @@ export default function DashboardOverview({ user }) {
         </article>
         <article className="stat-card">
           {/* <div className="stat-icon orange"></div> */}
-          <div className="stat-value">{pendingTaskCount}</div>
+          <div className="stat-value">{tasks.filter(t => t.status !== 'done').length}</div>
           <div className="stat-label">To Do / In Progress</div>
         </article>
         <article className="stat-card">
           {/* <div className="stat-icon green"></div> */}
-          <div className="stat-value">{completedTaskCount}</div>
+          <div className="stat-value">{tasks.filter(t => t.status === 'done').length}</div>
           <div className="stat-label">Completed</div>
         </article>
       </section>
@@ -93,7 +86,18 @@ export default function DashboardOverview({ user }) {
             <div className="card-title">Task Analytics</div>
           </div>
           <div className="chart-container" style={{ height: 250 }}>
-            <TaskStatusChart chartData={chartData} />
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </section>
       </div>
